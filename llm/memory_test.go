@@ -6,10 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ollama/ollama/api"
-	"github.com/ollama/ollama/gpu"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ollama/ollama/api"
+	"github.com/ollama/ollama/gpu"
 )
 
 func TestEstimateGPULayers(t *testing.T) {
@@ -32,7 +33,6 @@ func TestEstimateGPULayers(t *testing.T) {
 	assert.Len(t, tensors, inputLayerCount+1)
 	err = WriteGGUF(f, KV{
 		"general.architecture":          "llama",
-		"general.name":                  "name",
 		"llama.context_length":          uint32(32),
 		"llama.embedding_length":        uint32(4096),
 		"llama.block_count":             uint32(inputLayerCount),

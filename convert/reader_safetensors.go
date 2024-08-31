@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
 	"slices"
+	"strings"
 
 	"github.com/d4l3k/go-bfloat16"
 	"github.com/x448/float16"
@@ -20,7 +22,7 @@ type safetensorMetadata struct {
 	Offsets []int64  `json:"data_offsets"`
 }
 
-func parseSafetensors(fsys fs.FS, ps ...string) ([]Tensor, error) {
+func parseSafetensors(fsys fs.FS, replacer *strings.Replacer, ps ...string) ([]Tensor, error) {
 	var ts []Tensor
 	for _, p := range ps {
 		f, err := fsys.Open(p)
@@ -49,6 +51,10 @@ func parseSafetensors(fsys fs.FS, ps ...string) ([]Tensor, error) {
 
 		for _, key := range keys {
 			if value := headers[key]; value.Type != "" {
+				// bitsandbytes quantized models are unsupported
+				if len(value.Shape) == 0 {
+					return nil, errors.New("unsupported safetensors model")
+				}
 				ts = append(ts, safetensor{
 					fs:     fsys,
 					path:   p,
@@ -56,7 +62,7 @@ func parseSafetensors(fsys fs.FS, ps ...string) ([]Tensor, error) {
 					offset: safetensorsPad(n, value.Offsets[0]),
 					size:   safetensorsPad(n, value.Offsets[1]) - safetensorsPad(n, value.Offsets[0]),
 					tensorBase: &tensorBase{
-						name:  key,
+						name:  replacer.Replace(key),
 						shape: value.Shape,
 					},
 				})
@@ -111,8 +117,9 @@ func (st safetensor) WriteTo(w io.Writer) (int64, error) {
 			return 0, err
 		}
 
-		for _, b := range u16s {
-			f32s = append(f32s, float16.Frombits(b).Float32())
+		f32s = make([]float32, len(u16s))
+		for i := range u16s {
+			f32s[i] = float16.Frombits(u16s[i]).Float32()
 		}
 
 	case "BF16":
