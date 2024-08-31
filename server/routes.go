@@ -1257,10 +1257,10 @@ func streamResponse(c *gin.Context, ch chan any) {
 			//Ekliptor> debugging reply
 			_ = lastVal
 			fmt.Printf("full res: %s\r\n", sb.String())
-			//Ekliptor> debugging reply
+			//Ekliptor< debugging reply
 			return false
 		}
-		//Ekliptor< debugging reply
+		//Ekliptor> debugging reply
 		lastVal = val
 		res, ok := val.(api.ChatResponse)
 		if ok && len(res.Message.Content) != 0 {
@@ -1412,7 +1412,10 @@ func (s *Server) ChatHandler(c *gin.Context) {
 		}
 	}()
 
-	if req.Stream != nil && !*req.Stream {
+	//Ekliptor> blocking tools calls for streaming
+	//if req.Stream != nil && !*req.Stream {
+	if (req.Stream != nil && !*req.Stream) || ((req.Stream == nil || *req.Stream) && len(req.Tools) > 0) {
+		//Ekliptor< blocking tools calls for streaming
 		var resp api.ChatResponse
 		var sb strings.Builder
 		for rr := range ch {
@@ -1442,6 +1445,28 @@ func (s *Server) ChatHandler(c *gin.Context) {
 				resp.Message.Content = ""
 			}
 		}
+
+		//Ekliptor> blocking tools calls for streaming
+		if (req.Stream == nil || *req.Stream) && len(resp.Message.ToolCalls) > 0 {
+			toolCh := make(chan any)
+			go func() {
+				defer close(toolCh)
+				toolCalls := resp.Message.ToolCalls
+				for _, toolCall := range toolCalls {
+					toolCh <- api.ChatResponse{
+						Model:     resp.Model,
+						CreatedAt: resp.CreatedAt,
+						Message:   api.Message{Role: "assistant", ToolCalls: []api.ToolCall{toolCall}},
+					}
+				}
+				resp.Message.ToolCalls = nil
+				resp.DoneReason = "tool_calls"
+				toolCh <- resp
+			}()
+			streamResponse(c, toolCh)
+			return
+		}
+		//Ekliptor< blocking tools calls for streaming
 
 		c.JSON(http.StatusOK, resp)
 		return

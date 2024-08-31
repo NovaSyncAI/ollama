@@ -15,7 +15,7 @@ https://ollama.com/blog/tool-support
 waiting:
 https://github.com/ollama/ollama/pull/5915
 https://github.com/ollama/ollama/pull/5995
-https://github.com/ollama/ollama/pull/6066/files
+https://github.com/ollama/ollama/pull/6066/files <- merged Nova fix
 
 pnpm
 ----

@@ -139,6 +139,7 @@ type CompletionChunk struct {
 }
 
 type ToolCall struct {
+	Index    *int   `json:"index,omitempty"` //Ekliptor> OpenAPI function index
 	ID       string `json:"id"`
 	Type     string `json:"type"`
 	Function struct {
@@ -200,12 +201,19 @@ func toolCallId() string {
 	return "call_" + strings.ToLower(string(b))
 }
 
-func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
-	toolCalls := make([]ToolCall, len(r.Message.ToolCalls))
-	for i, tc := range r.Message.ToolCalls {
+// Ekliptor> blocking tools calls for streaming
+//
+//	func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
+//		toolCalls := make([]ToolCall, len(r.Message.ToolCalls))
+//		for i, tc := range r.Message.ToolCalls {
+func parseToolCalls(respToolCalls []api.ToolCall) []ToolCall {
+	toolCalls := make([]ToolCall, len(respToolCalls))
+	for i, tc := range respToolCalls {
+		//Ekliptor< blocking tools calls for streaming
 		toolCalls[i].ID = toolCallId()
 		toolCalls[i].Type = "function"
 		toolCalls[i].Function.Name = tc.Function.Name
+		toolCalls[i].Index = &i //> OpenAPI function index
 
 		args, err := json.Marshal(tc.Function.Arguments)
 		if err != nil {
@@ -215,6 +223,13 @@ func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
 
 		toolCalls[i].Function.Arguments = string(args)
 	}
+	//Ekliptor> blocking tools calls for streaming
+	return toolCalls
+}
+
+func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
+	toolCalls := parseToolCalls(r.Message.ToolCalls)
+	//Ekliptor< blocking tools calls for streaming
 
 	return ChatCompletion{
 		Id:                id,
@@ -244,6 +259,8 @@ func toChatCompletion(id string, r api.ChatResponse) ChatCompletion {
 }
 
 func toChunk(id string, r api.ChatResponse) ChatCompletionChunk {
+	toolCalls := parseToolCalls(r.Message.ToolCalls) //Ekliptor> blocking tools calls for streaming
+
 	return ChatCompletionChunk{
 		Id:                id,
 		Object:            "chat.completion.chunk",
@@ -252,7 +269,7 @@ func toChunk(id string, r api.ChatResponse) ChatCompletionChunk {
 		SystemFingerprint: "fp_ollama",
 		Choices: []ChunkChoice{{
 			Index: 0,
-			Delta: Message{Role: "assistant", Content: r.Message.Content},
+			Delta: Message{Role: "assistant", Content: r.Message.Content, ToolCalls: toolCalls}, //Ekliptor> blocking tools calls for streaming
 			FinishReason: func(reason string) *string {
 				if len(reason) > 0 {
 					return &reason
