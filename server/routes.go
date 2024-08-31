@@ -1228,12 +1228,28 @@ func waitForStream(c *gin.Context, ch chan interface{}) {
 }
 
 func streamResponse(c *gin.Context, ch chan any) {
+	//Ekliptor> debugging reply
+	var sb strings.Builder
+	var lastVal any
+	//Ekliptor< debugging reply
+
 	c.Header("Content-Type", "application/x-ndjson")
 	c.Stream(func(w io.Writer) bool {
 		val, ok := <-ch
 		if !ok {
+			//Ekliptor> debugging reply
+			_ = lastVal
+			fmt.Printf("full res: %s\r\n", sb.String())
+			//Ekliptor> debugging reply
 			return false
 		}
+		//Ekliptor< debugging reply
+		lastVal = val
+		res, ok := val.(api.ChatResponse)
+		if ok && len(res.Message.Content) != 0 {
+			sb.WriteString(res.Message.Content)
+		}
+		//Ekliptor< debugging reply
 
 		bts, err := json.Marshal(val)
 		if err != nil {
