@@ -1,0 +1,31 @@
+
+https://github.com/ollama/ollama/blob/main/docs/development.md
+go generate ./...
+go build .
+
+./ollama serve
+./ollama run llama3 # run chat in shell
+
+# wait for function calling and we can use ollama as middle layer
+https://ollama.com/blog/openai-compatibility
+https://github.com/sashabaranov/go-openai/blob/master/examples/completion-with-tool/main.go
+https://ollama.com/blog/tool-support
+
+
+waiting:
+https://github.com/ollama/ollama/pull/5915
+https://github.com/ollama/ollama/pull/5995
+https://github.com/ollama/ollama/pull/6066/files
+
+pnpm
+----
+pnpm link --global
+pnpm link --global @ekliptor/foo
+
+# redis HTTP
+------------
+https://upstash.com/docs/oss/sdks/ts/redis/developing
+read eviction events: https://redis.io/docs/latest/develop/use/keyspace-notifications/
+
+
+https://sdk.vercel.ai/docs/reference/ai-sdk-rsc/stream-ui#model
